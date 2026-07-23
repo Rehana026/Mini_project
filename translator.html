@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Language Translator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #f4f6f9; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .translator-card { background: #ffffff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 800px; padding: 24px; }
+    h1 { font-size: 1.5rem; margin-bottom: 20px; text-align: center; color: #0f172a; }
+    
+    .controls { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    select { flex: 1; min-width: 140px; padding: 10px 14px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.95rem; background: #fff; cursor: pointer; }
+    .swap-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: 0.2s; }
+    .swap-btn:hover { background: #e2e8f0; }
+
+    .text-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 600px) { .text-boxes { grid-template-columns: 1fr; } }
+
+    .box-wrapper { display: flex; flex-direction: column; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; position: relative; }
+    textarea { width: 100%; height: 160px; border: none; background: transparent; resize: none; outline: none; font-size: 1rem; color: #334155; }
+    
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+    .action-btn { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
+    .action-btn:hover { background: #f1f5f9; }
+
+    .translate-btn { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .translate-btn:hover { background: #1d4ed8; }
+    .translate-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="translator-card">
+  <h1>Language Translator</h1>
+
+  <!-- Language Selection -->
+  <div class="controls">
+    <select id="sourceLang">
+      <option value="autodetect">Auto Detect</option>
+      <option value="en" selected>English</option>
+      <option value="es">Spanish</option>
+      <option value="fr">French</option>
+      <option value="de">German</option>
+      <option value="hi">Hindi</option>
+      <option value="ja">Japanese</option>
+      <option value="zh">Chinese</option>
+    </select>
+
+    <button class="swap-btn" id="swapBtn" title="Swap languages">⇄</button>
+
+    <select id="targetLang">
+      <option value="es" selected>Spanish</option>
+      <option value="en">English</option>
+      <option value="fr">French</option>
+      <option value="de">German</option>
+      <option value="hi">Hindi</option>
+      <option value="ja">Japanese</option>
+      <option value="zh">Chinese</option>
+    </select>
+  </div>
+
+  <!-- Text Input / Output -->
+  <div class="text-boxes">
+    <div class="box-wrapper">
+      <textarea id="inputText" placeholder="Enter text to translate..."></textarea>
+      <div class="actions">
+        <button class="action-btn" onclick="speakText('inputText', 'sourceLang')">🔊 Listen</button>
+      </div>
+    </div>
+
+    <div class="box-wrapper">
+      <textarea id="outputText" placeholder="Translation will appear here..." readonly></textarea>
+      <div class="actions">
+        <button class="action-btn" onclick="copyTranslation()">📋 Copy</button>
+        <button class="action-btn" onclick="speakText('outputText', 'targetLang')">🔊 Listen</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="translate-btn" id="translateBtn" onclick="translateText()">Translate</button>
+</div>
+
+<script>
+  // API Call using MyMemory Free API
+  async function translateText() {
+    const text = document.getElementById('inputText').value.trim();
+    const source = document.getElementById('sourceLang').value;
+    const target = document.getElementById('targetLang').value;
+    const outputText = document.getElementById('outputText');
+    const translateBtn = document.getElementById('translateBtn');
+
+    if (!text) {
+      outputText.value = '';
+      return;
+    }
+
+    const langPair = `${source === 'autodetect' ? 'auto' : source}|${target}`;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+
+    try {
+      translateBtn.disabled = true;
+      translateBtn.textContent = 'Translating...';
+      outputText.value = 'Translating...';
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.responseData && data.responseData.translatedText) {
+        outputText.value = data.responseData.translatedText;
+      } else {
+        outputText.value = 'Translation error. Please try again.';
+      }
+    } catch (error) {
+      outputText.value = 'Error connecting to translation API.';
+      console.error(error);
+    } finally {
+      translateBtn.disabled = false;
+      translateBtn.textContent = 'Translate';
+    }
+  }
+
+  // Copy to Clipboard
+  function copyTranslation() {
+    const outputText = document.getElementById('outputText').value;
+    if (!outputText) return;
+
+    navigator.clipboard.writeText(outputText).then(() => {
+      alert('Translated text copied to clipboard!');
+    });
+  }
+
+  // Text-to-Speech feature
+  function speakText(elementId, langElementId) {
+    const text = document.getElementById(elementId).value;
+    let lang = document.getElementById(langElementId).value;
+
+    if (!text) return;
+
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (lang !== 'autodetect') {
+        utterance.lang = lang;
+      }
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert('Text-to-Speech is not supported in this browser.');
+    }
+  }
+
+  // Swap Languages
+  document.getElementById('swapBtn').addEventListener('click', () => {
+    const sourceSelect = document.getElementById('sourceLang');
+    const targetSelect = document.getElementById('targetLang');
+
+    if (sourceSelect.value === 'autodetect') return;
+
+    const temp = sourceSelect.value;
+    sourceSelect.value = targetSelect.value;
+    targetSelect.value = temp;
+
+    const inputArea = document.getElementById('inputText');
+    const outputArea = document.getElementById('outputText');
+    
+    inputArea.value = outputArea.value;
+    outputText.value = '';
+  });
+</script>
+
+</body>
+</html>
